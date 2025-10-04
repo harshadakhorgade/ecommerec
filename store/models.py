@@ -5,6 +5,10 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from PIL import Image
 
+from PIL import Image
+from io import BytesIO
+from django.core.files.base import ContentFile
+
 class Category(models.Model):
     name = models.CharField(max_length=50, unique=True, blank=False, null=False)
     key_words = models.CharField(max_length=255, blank=True, null=True)
@@ -24,12 +28,28 @@ class Category(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
+  
+
     def resize_image(self):
         if self.image:
-            img = Image.open(self.image.path)
+            # Open image from storage
+            self.image.seek(0)
+            img = Image.open(self.image)
+
+            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-                img.save(self.image.path, quality=70, optimize=True)
+
+                # Save back to memory
+                img_io = BytesIO()
+                img.save(img_io, format=img.format, quality=70, optimize=True)
+
+                # Save to same field
+                self.profile_image.save(
+                    self.profile_image.name,
+                    ContentFile(img_io.getvalue()),
+                    save=False  # avoid recursion
+                )
 
 
 class Product(models.Model):
@@ -94,12 +114,27 @@ class Product(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
+
     def resize_image(self):
         if self.profile_image:
-            img = Image.open(self.profile_image.path)
+            # Open image from storage
+            self.profile_image.seek(0)
+            img = Image.open(self.profile_image)
+
+            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-                img.save(self.profile_image.path, quality=70, optimize=True)
+
+                # Save back to memory
+                img_io = BytesIO()
+                img.save(img_io, format=img.format, quality=70, optimize=True)
+
+                # Save to same field
+                self.profile_image.save(
+                    self.profile_image.name,
+                    ContentFile(img_io.getvalue()),
+                    save=False  # avoid recursion
+                )
 
     @property
     def imageURL(self):
@@ -132,12 +167,27 @@ class ProductImage(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
+
     def resize_image(self):
-        if self.product_images:
-            img = Image.open(self.product_images.path)
+        if self.profile_image:
+            # Open image from storage
+            self.profile_image.seek(0)
+            img = Image.open(self.profile_image)
+
+            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-                img.save(self.product_images.path, quality=70, optimize=True)
+
+                # Save back to memory
+                img_io = BytesIO()
+                img.save(img_io, format=img.format, quality=70, optimize=True)
+
+                # Save to same field
+                self.profile_image.save(
+                    self.profile_image.name,
+                    ContentFile(img_io.getvalue()),
+                    save=False  # avoid recursion
+                )
 
     @property
     def imageURL(self):
@@ -159,13 +209,29 @@ class WebBanner(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
+
     def resize_image(self):
-        if self.image:
-            img = Image.open(self.image.path)
+        if self.profile_image:
+            # Open image from storage
+            self.profile_image.seek(0)
+            img = Image.open(self.profile_image)
+
+            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-                img.save(self.image.path, quality=70, optimize=True)
 
+                # Save back to memory
+                img_io = BytesIO()
+                img.save(img_io, format=img.format, quality=70, optimize=True)
+
+                # Save to same field
+                self.profile_image.save(
+                    self.profile_image.name,
+                    ContentFile(img_io.getvalue()),
+                    save=False  # avoid recursion
+                )
+
+        
     @property
     def imageURL(self):
         try:
@@ -174,6 +240,9 @@ class WebBanner(models.Model):
             url = ''
         return url
     
+from PIL import Image
+from io import BytesIO
+from django.core.files.base import ContentFile
     
 class MobileBanner(models.Model):
     image = models.ImageField(upload_to='uploads/banners/', verbose_name="Image")
@@ -185,12 +254,28 @@ class MobileBanner(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
+      
     def resize_image(self):
-        if self.image:
-            img = Image.open(self.image.path)
+        if self.profile_image:
+            # Open image from storage
+            self.profile_image.seek(0)
+            img = Image.open(self.profile_image)
+
+            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-                img.save(self.image.path, quality=70, optimize=True)
+
+                # Save back to memory
+                img_io = BytesIO()
+                img.save(img_io, format=img.format, quality=70, optimize=True)
+
+                # Save to same field
+                self.profile_image.save(
+                    self.profile_image.name,
+                    ContentFile(img_io.getvalue()),
+                    save=False  # avoid recursion
+                )
+
 
     @property
     def imageURL(self):

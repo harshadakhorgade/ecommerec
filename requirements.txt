@@ -43,3 +43,5 @@ tzdata==2025.1
 uritemplate==4.1.1
 urllib3==2.2.3
 setuptools
+django-storages==1.14.2
+boto3==1.35.36

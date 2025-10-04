@@ -122,3 +122,5 @@ class BankingDetails(models.Model):
     razorpay_fund_account_id = models.CharField(max_length=100, blank=True, null=True)
 
 
+
+

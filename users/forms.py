@@ -1,8 +1,49 @@
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordChangeForm
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm, PasswordChangeForm, AuthenticationForm
+from django.contrib.auth import authenticate
 from django import forms
 from .models import CustomUser, Profile, ShippingAddress
 
 from .models import BankingDetails
+
+
+class EmailAuthenticationForm(AuthenticationForm):
+    """Custom authentication form that uses email instead of username"""
+    username = forms.EmailField(
+        label='Email',
+        widget=forms.EmailInput(attrs={
+            'autofocus': True,
+            'placeholder': 'Enter your email',
+            'class': 'form-control'
+        })
+    )
+    password = forms.CharField(
+        label='Password',
+        strip=False,
+        widget=forms.PasswordInput(attrs={
+            'autocomplete': 'current-password',
+            'placeholder': 'Enter your password',
+            'class': 'form-control'
+        })
+    )
+
+    def clean(self):
+        username = self.cleaned_data.get('username')  # This is actually email
+        password = self.cleaned_data.get('password')
+
+        if username is not None and password:
+            # Use email as username for authentication
+            self.user_cache = authenticate(
+                self.request,
+                username=username,  # Django authenticate expects 'username' parameter
+                password=password,
+            )
+            if self.user_cache is None:
+                raise self.get_invalid_login_error()
+            else:
+                self.confirm_login_allowed(self.user_cache)
+
+        return self.cleaned_data
+
 
 class CustomUserCreationForm(UserCreationForm):
     """Form for Django admin user creation"""

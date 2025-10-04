@@ -3,12 +3,11 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.contrib.auth.views import PasswordResetView, PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
-from django.contrib.auth.forms import AuthenticationForm
 
 from payment import razorpay
 from .forms import (
     CustomUserRegistrationForm, UpdateUserForm, UpdateUserPassword, 
-     ShippingAddressForm, UpdateInfoForm
+     ShippingAddressForm, UpdateInfoForm, EmailAuthenticationForm
 )
 from .models import CustomUser, Profile, ShippingAddress
 import json
@@ -72,30 +71,33 @@ def register_user(request):
 # Login User
 def login_user(request):
     if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+        form = EmailAuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
+            # Get the authenticated user from the form
+            user = form.get_user()
+            login(request, user)
 
-                # Restore previous cart
+            # Restore previous cart
+            try:
                 current_user = Profile.objects.get(user=request.user)
                 saved_cart = current_user.old_cart
                 if saved_cart:
                     cart = Cart(request)
                     for key, value in json.loads(saved_cart).items():
                         cart.db_add(product=key, quantity=value)
+            except Profile.DoesNotExist:
+                # Handle case where profile doesn't exist yet
+                pass
 
-                messages.success(request, 'Login successful!')
-                
-                # Redirect to next page if provided, otherwise go to home
-                next_page = request.GET.get('next', 'home')
-                return redirect(next_page)
-        messages.error(request, "Invalid username or password.")
+            messages.success(request, 'Login successful!')
+            
+            # Redirect to next page if provided, otherwise go to home
+            next_page = request.GET.get('next', 'home')
+            return redirect(next_page)
+        else:
+            messages.error(request, "Invalid email or password.")
     else:
-        form = AuthenticationForm()
+        form = EmailAuthenticationForm()
     
     return render(request, 'users/login.html', {'form': form})
 
