@@ -1,13 +1,12 @@
 from datetime import timedelta
+from io import BytesIO
 from django.db import models
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.core.files.base import ContentFile
 from PIL import Image
 
-from PIL import Image
-from io import BytesIO
-from django.core.files.base import ContentFile
 
 class Category(models.Model):
     name = models.CharField(max_length=50, unique=True, blank=False, null=False)
@@ -28,35 +27,30 @@ class Category(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
-  
-
     def resize_image(self):
         if self.image:
-            # Open image from storage
             self.image.seek(0)
             img = Image.open(self.image)
-
-            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-
-                # Save back to memory
                 img_io = BytesIO()
                 img.save(img_io, format=img.format, quality=70, optimize=True)
-
-                # Save to same field
-                self.profile_image.save(
-                    self.profile_image.name,
-                    ContentFile(img_io.getvalue()),
-                    save=False  # avoid recursion
-                )
+                self.image.save(self.image.name, ContentFile(img_io.getvalue()), save=False)
 
 
 class Product(models.Model):
-    profile_image = models.ImageField(upload_to='uploads/products', null=True, blank=True, default='default/product.png')
+    profile_image = models.ImageField(
+        upload_to='uploads/products',
+        null=True,
+        blank=True,
+        default='default/product.png'
+    )
     name = models.CharField(max_length=255, verbose_name='Product Name')
     price = models.DecimalField(max_digits=12, decimal_places=2)
-    special_commission_amount = models.DecimalField(max_digits=10,decimal_places=2,default=0.00,help_text="Amount to be used for MLM commission distribution")
+    special_commission_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Amount to be used for MLM commission distribution"
+    )
     description = models.TextField(verbose_name='Product Description', blank=True, null=True)
     is_sale = models.BooleanField(default=False)
     sale_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -73,8 +67,6 @@ class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', blank=True, null=True)
     color = models.CharField(max_length=255, blank=True)
     size = models.CharField(max_length=255, blank=True)
-    is_new = models.BooleanField(default=True)
-    in_stock = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -86,15 +78,8 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         self.full_clean()
-
-        if self.stock_quantity <= 0:
-            self.is_listed = False
-
-        if self.sale_price:
-            self.is_sale = True
-        else:
-            self.is_sale = False
-
+        self.is_listed = self.stock_quantity > 0
+        self.is_sale = bool(self.sale_price)
         if self.is_sale and self.sale_price and self.sale_price < self.price:
             self.discount = round(self.price - self.sale_price, 2)
             self.percentage_discount = round((self.discount / self.price) * 100)
@@ -114,40 +99,27 @@ class Product(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
-
     def resize_image(self):
         if self.profile_image:
-            # Open image from storage
             self.profile_image.seek(0)
             img = Image.open(self.profile_image)
-
-            # Resize if needed
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-
-                # Save back to memory
                 img_io = BytesIO()
                 img.save(img_io, format=img.format, quality=70, optimize=True)
-
-                # Save to same field
-                self.profile_image.save(
-                    self.profile_image.name,
-                    ContentFile(img_io.getvalue()),
-                    save=False  # avoid recursion
-                )
+                self.profile_image.save(self.profile_image.name, ContentFile(img_io.getvalue()), save=False)
 
     @property
     def imageURL(self):
         try:
-            url = self.profile_image.url
+            return self.profile_image.url
         except:
-            url = ''
-        return url
+            return ''
 
     @property
     def is_new(self):
         return (timezone.now() - self.created_at) <= timedelta(days=30)
-    
+
     @property
     def in_stock(self):
         return self.stock_quantity > 0
@@ -167,35 +139,22 @@ class ProductImage(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
-
     def resize_image(self):
-        if self.profile_image:
-            # Open image from storage
-            self.profile_image.seek(0)
-            img = Image.open(self.profile_image)
-
-            # Resize if needed
+        if self.product_images:
+            self.product_images.seek(0)
+            img = Image.open(self.product_images)
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-
-                # Save back to memory
                 img_io = BytesIO()
                 img.save(img_io, format=img.format, quality=70, optimize=True)
-
-                # Save to same field
-                self.profile_image.save(
-                    self.profile_image.name,
-                    ContentFile(img_io.getvalue()),
-                    save=False  # avoid recursion
-                )
+                self.product_images.save(self.product_images.name, ContentFile(img_io.getvalue()), save=False)
 
     @property
     def imageURL(self):
         try:
-            url = self.product_images.url
+            return self.product_images.url
         except:
-            url = ''
-        return url
+            return ''
 
 
 class WebBanner(models.Model):
@@ -204,46 +163,28 @@ class WebBanner(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
     in_use = models.BooleanField(default=False)
 
-
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         self.resize_image()
 
-
     def resize_image(self):
-        if self.profile_image:
-            # Open image from storage
-            self.profile_image.seek(0)
-            img = Image.open(self.profile_image)
-
-            # Resize if needed
+        if self.image:
+            self.image.seek(0)
+            img = Image.open(self.image)
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-
-                # Save back to memory
                 img_io = BytesIO()
                 img.save(img_io, format=img.format, quality=70, optimize=True)
+                self.image.save(self.image.name, ContentFile(img_io.getvalue()), save=False)
 
-                # Save to same field
-                self.profile_image.save(
-                    self.profile_image.name,
-                    ContentFile(img_io.getvalue()),
-                    save=False  # avoid recursion
-                )
-
-        
     @property
     def imageURL(self):
         try:
-            url = self.image.url
+            return self.image.url
         except:
-            url = ''
-        return url
-    
-from PIL import Image
-from io import BytesIO
-from django.core.files.base import ContentFile
-    
+            return ''
+
+
 class MobileBanner(models.Model):
     image = models.ImageField(upload_to='uploads/banners/', verbose_name="Image")
     caption = models.CharField(max_length=255, blank=True, null=True, verbose_name="Caption")
@@ -254,49 +195,19 @@ class MobileBanner(models.Model):
         super().save(*args, **kwargs)
         self.resize_image()
 
-      
     def resize_image(self):
-        if self.profile_image:
-            # Open image from storage
-            self.profile_image.seek(0)
-            img = Image.open(self.profile_image)
-
-            # Resize if needed
+        if self.image:
+            self.image.seek(0)
+            img = Image.open(self.image)
             if img.height > 1125 or img.width > 1125:
                 img.thumbnail((1125, 1125))
-
-                # Save back to memory
                 img_io = BytesIO()
                 img.save(img_io, format=img.format, quality=70, optimize=True)
-
-                # Save to same field
-                self.profile_image.save(
-                    self.profile_image.name,
-                    ContentFile(img_io.getvalue()),
-                    save=False  # avoid recursion
-                )
-
+                self.image.save(self.image.name, ContentFile(img_io.getvalue()), save=False)
 
     @property
     def imageURL(self):
         try:
-            url = self.image.url
+            return self.image.url
         except:
-            url = ''
-        return url
-
-
-# class WebBanner(Banner):
-#     class Meta:
-#         verbose_name_plural = 'Web Banners'
-    
-
-
-
-# class MobileBanner(Banner):
-#     class Meta:
-#         verbose_name_plural = 'Mobile Banners'
-        
-#     def __str__(self):
-#         return self.id
-
+            return ''
